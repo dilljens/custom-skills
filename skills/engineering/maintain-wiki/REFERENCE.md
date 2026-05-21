@@ -27,13 +27,24 @@ Two sections: quick reference at top, full architecture below.
 |--------|-----|
 | <Domain> | `features/<domain>.md` — <1 line> |
 
-## Reading guide
+## Navigation
+
+### For humans
 | I want to... | Read |
 |-------------|------|
 | Know what NOT to do | `_standards.md` § Rules |
 | Know how to write new code | `_standards.md` § Practices |
 | Match existing conventions | `_standards.md` § Patterns |
 | Understand a module | `features/<domain>.md` |
+
+### For AI agents
+| Task | Start here |
+|------|------------|
+| Add a feature | `_standards.md` § Rules → § Practices → target `features/<domain>.md` → § Patterns |
+| Fix a bug | `features/<domain>.md` (edge cases) → `_standards.md` § Rules |
+| Refactor a module | `features/<domain>.md` (deps + consumers) → `_standards.md` § Patterns |
+| Navigate unfamiliar code | Read domain one-liner → open `features/<domain>.md` |
+| Write a test | `features/<domain>.md` → `_standards.md` § Practices (Testing) |
 
 ## Entry points
 | Trigger | File | Description |
@@ -106,11 +117,26 @@ Detected conventions. Match these so new code fits in.
 **Pattern**: <describe>  **Example**: `<file>:<line>`
 **Rule**: <constraint>
 
+### Module structure
+**Import style**:
+**Barrel / re-export pattern**:
+**One export per file**: yes / no
+
+### Type conventions
+| Kind | Convention | Example |
+|------|-----------|---------|
+| Result types | | |
+| Enums | | |
+| Interfaces / traits | | |
+
 ### Naming
 | Kind | Style | Example |
 |------|-------|---------|
 | Files | <style> | `<example>` |
 | Functions | <style> | `<example>()` |
+
+### Concurrency (if applicable)
+**Pattern**: <describe>  **Example**: `<file>:<line>`
 ```
 
 ### Stack-specific practice defaults
@@ -137,11 +163,13 @@ Also scan AGENTS.md, CONTEXT.md, README for explicit rules.
 
 | Category | Detect |
 |----------|--------|
-| Error handling | throw vs return; `Result`, `Either`, `{data, error}` patterns |
-| Async flow | async/await, callbacks, event emitters, state-machine switch/case |
-| Module structure | barrel files, import style (named vs default) |
-| State management | hooks, stores, globals, actors |
+| Error handling | throw vs return; `Result`, `Either`, `{data, error}` patterns; error code enums; panic macros |
+| Module structure | barrel files (index.ts/__init__.py/mod.rs), named vs default exports, circular dependencies |
+| Type conventions | ADT/enum usage, Option/Maybe patterns, discriminated unions, newtype wrappers, interface composition |
+| Async/concurrency | async/await, callbacks, event loops, state-machine switch/case, channels/actors, mutex patterns |
+| State management | hooks, stores, globals, actors, context objects |
 | Naming | Sample 20+ names per layer, detect dominant style |
+| Test patterns | mock approach, fixture setup, test file naming convention |
 
 ---
 
@@ -233,16 +261,19 @@ AI-optimized codebase map.
 ## For agents
 
 ### Adding a feature
-_index → _standards (Rules + Practices) → domain doc → _standards (Patterns)
+_index (Navigation) → _standards (Rules + Practices) → domain doc → _standards (Patterns)
 
 ### Debugging
-_index → domain doc (edge cases) → _standards (Rules)
+_index (Navigation) → domain doc (edge cases) → _standards (Rules)
 
 ### Refactoring
-domain docs (target + consumers) → _index (topology)
+domain docs (deps + consumers) → _index (topology) → _standards (Patterns)
 
 ### Unfamiliar code
-_index (domain overview) → domain doc
+_index (domain one-liners) → domain doc
+
+### Writing a test
+domain doc → _standards (Practices: Testing + Patterns: Test patterns)
 
 ## Commands
 - `make wiki` — initialize
