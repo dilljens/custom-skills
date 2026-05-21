@@ -120,6 +120,8 @@ Detected conventions. Match these so new code fits in.
 
 ### Stack-specific practice defaults
 
+Only include the stack(s) detected in this project. Below are the available defaults — pick matching ones:
+
 **C/C++ embedded**: zero-init, no heap, enum class, fixed-width ints, no recursion, always brace, document shared variables, const everything.
 
 **Python**: type hints on public fns, dataclasses for data, pathlib not strings, pytest over unittest.
