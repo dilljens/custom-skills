@@ -13,17 +13,19 @@ See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
 
 ```
 "make wiki"          → initialize docs/wiki/ (interactive: domains + standards)
+"refresh wiki"       → skill changed — re-scan with current templates, keep user decisions
+"update wiki"        → code changed — scan code changes, update domain docs
 ```
 
 ## File inventory
 
 | File | Kind | Updated by |
 |------|------|-----------|
-| `_index.md` | Quickref + architecture map | `make wiki` (auto) |
-| `_standards.md` | Rules + practices + patterns | `make wiki` (interactive) |
-| `features/*.md` | Domain docs | `make wiki` |
+| `_index.md` | Quickref + architecture map | `make wiki`, `refresh wiki`, `update wiki` |
+| `_standards.md` | Rules + practices + patterns | `make wiki` (interactive), `refresh wiki`, `update wiki` |
+| `features/*.md` | Domain docs | `make wiki`, `refresh wiki`, `update wiki` |
 | `plans/` | Architecture proposals | manual |
-| `README.md` | Usage instructions | `make wiki` only |
+| `README.md` | Usage instructions | `make wiki`, `refresh wiki` |
 
 `_index.md` — quickref block at top (build/test commands, key files, domain one-liners), then architecture topology + entry points + "change X → look at Y" table.
 
@@ -46,6 +48,33 @@ See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
    - `plans/` — empty directory
 7. Add `## Codebase Wiki` section to AGENTS.md.
 
+## Workflow: refresh wiki (skill changed)
+
+Use when the maintain-wiki skill itself has been updated — new templates, new heuristics, new patterns to detect. The project's domain assignments and approved standards are preserved; only the wiki's format and detection depth are upgraded.
+
+1. Read the current wiki to extract preserved state: domain names, approved `_standards.md` content.
+2. Re-detect tech stack with current heuristics.
+3. Re-scan patterns with current detection heuristics (REFERENCE.md) — propose additions to `_standards.md` Patterns section, **ask user to approve**.
+4. Regenerate `_index.md` — new template format, same domain registry, updated topology.
+5. Regenerate `features/*.md` — each domain doc rewritten with current module doc template. Preserve architectural prose if still accurate; flag staleness.
+6. Update `README.md` if the template changed.
+7. Report what was upgraded.
+
+## Workflow: update wiki (code changed)
+
+Use when project source code has changed and the wiki needs to reflect it — new files, moved files, new domains, architecture shifts.
+
+1. Scan for new source files not covered by any existing `features/*.md`.
+2. Scan for files that moved to a different domain.
+3. Check if any existing domain docs reference deleted files.
+4. **If new domains found**: propose new domain groupings → **ask user to approve**.
+5. Update affected domain docs: architecture changes, new key functions, new edge cases.
+6. Regenerate `_index.md` — updated domain registry, topology, file counts.
+7. Re-scan patterns — propose additions to `_standards.md` Patterns if new conventions emerged → **ask user to approve**.
+8. Report what changed.
+
 ## Proactive suggestion
 
-After making code changes, if `docs/wiki/` exists, check whether any domain docs need updating (new files in a domain, architecture changes, new edge cases).
+After making code changes, if `docs/wiki/` exists: "N files changed. Run `update wiki` to refresh domain docs?"
+
+After the maintain-wiki skill itself is updated: "The wiki skill has changed. Run `refresh wiki` to upgrade your wiki's format and detection depth?"
