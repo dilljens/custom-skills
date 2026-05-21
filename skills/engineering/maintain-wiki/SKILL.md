@@ -17,6 +17,7 @@ See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
 "refresh patterns"   → re-scan codebase, propose updated _patterns.md
 "refresh lifecycle"  → re-scan state machines, propose updated _lifecycle.md
 "refresh rules"      → re-scan for coding commandments, propose updated _rules.md
+"refresh practices"  → propose updated _practices.md based on language/framework
 ```
 
 ## File inventory
@@ -27,6 +28,7 @@ See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
 | `_index.md` | Spatial map | `make wiki` (auto) |
 | `_deps.md` | Dependency map | `make wiki` (auto) |
 | `_rules.md` | Coding commandments | `make wiki` (interactive) |
+| `_practices.md` | Engineering standards | `make wiki` (standards-based) |
 | `_patterns.md` | Code archeology | `make wiki` (interactive), `refresh patterns` |
 | `_tests.md` | Test inventory + per-domain run commands | `make wiki` (auto) |
 | `_lifecycle.md` | State machines + error recovery | `make wiki` (interactive), `refresh lifecycle` |
@@ -68,6 +70,7 @@ This is faster than grepping the entire source tree and returns precise file:lin
    - `_index.md` — entry points, ASCII topology, "change X → look at Y" table, domain TOC
    - `_deps.md` — dependency graph from import analysis, per-module verify commands
    - `_rules.md` — coding commandments: what you must NEVER do
+   - `_practices.md` — engineering standards: how to write maintainable new code (see REFERENCE.md for stack-specific defaults)
    - `_patterns.md` — how code is written here (stack-specific templates in REFERENCE.md)
    - `_tests.md` — test file→domain mapping, exact run commands per domain, coverage gaps
    - `_lifecycle.md` — runtime state machine diagrams + error recovery paths
@@ -96,6 +99,10 @@ Re-scan the codebase and propose an updated `_lifecycle.md`. Same heuristic as `
 
 Re-scan the codebase and AGENTS.md / README / CONTEXT for coding commandments. Propose additions or removals to `_rules.md`. Rules are high-importance: they prevent catastrophic bugs, not stylistic preferences. Present for user approval. Never auto-write.
 
+## Workflow: refresh practices
+
+Re-scan the codebase and propose additions to `_practices.md` based on new patterns observed in the source (e.g., if the project has started using a new framework, add framework-specific practices). Start from the stack-specific practice defaults in REFERENCE.md. Practices are aspirational — they set the bar for new code, not document existing code. Present additions for user approval. Never auto-write without approval.
+
 ## Proactive suggestion
 
 After making code changes, run `refresh symbol-index` to keep the index current. Then check:
@@ -104,6 +111,7 @@ After making code changes, run `refresh symbol-index` to keep the index current.
 2. Did you change any state machine or lifecycle path? → `_lifecycle.md` may need updating
 3. Did you introduce a new pattern or convention? → `_patterns.md` may need updating
 4. Did you add/remove dependencies? → `_deps.md` and domain doc "Dependencies" sections need updating
+5. Did you write new code that should follow standards? → check `_practices.md` compliance
 
 If a domain doc is clearly stale after your changes, propose an update to the user. Never silently let stale docs accumulate.
 
