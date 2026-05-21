@@ -46,7 +46,7 @@ See [REFERENCE.md](REFERENCE.md) for manifests, templates, and detection heurist
    - `_tests.md` — test file→domain mapping, test commands, coverage gaps
    - `_lifecycle.md` — runtime state machine (stack-specific templates in REFERENCE.md)
    - `README.md` — instructions for humans and agents
-   - **Do NOT create domain docs yet** — lazy creation on first `update wiki`
+   - Create domain docs (`features/*.md`) for each approved domain now — one doc per domain covering its files, purpose, and key exports
 8. Add the ## Codebase Wiki section to AGENTS.md.
 
 ## Workflow: update wiki
