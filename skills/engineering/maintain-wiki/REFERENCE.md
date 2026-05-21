@@ -37,10 +37,8 @@ Two sections: quick reference at top, full architecture below.
 | Know what NOT to do | `_standards.md` § Rules |
 | Know how to write new code | `_standards.md` § Practices |
 | Match existing conventions | `_standards.md` § Patterns |
-| Know how system runs | `_lifecycle.md` |
-| Know who uses what | `_deps.md` |
-| Find a definition | Search `symbol-index.json` |
-| Know what's tested | `_tests.md` |
+| Find a definition | `_symbols.md` or `rg '<name>'` |
+| Understand a module | `features/<domain>.md` |
 
 ## Entry points
 | Trigger | File | Description |
@@ -150,79 +148,6 @@ Also scan AGENTS.md, CONTEXT.md, README for explicit rules.
 
 ---
 
-## `_deps.md` template
-
-```markdown
-# Dependency Map
-
-| Module | Depends on | Depended on by |
-|--------|-----------|----------------|
-
-## High-risk (≥3 dependents)
-
-## Solitary (0 dependents)
-
-## Verify commands per module
-
-| Module | Test command |
-|--------|-------------|
-```
-
----
-
-## `_tests.md` template
-
-```markdown
-# Test Inventory
-
-**Framework**: <name>  **Run all**: `<cmd>` (<N> tests)
-
-## Per-domain
-| Domain | Run command | Files | Tests | Confidence |
-|--------|------------|-------|-------|-----------|
-
-## Untested domains
-
-## Conventions
-- Location: `<dir>`
-- Naming: `<pattern>`
-
-## Add a test
-1. Create `<file>`
-2. Follow pattern from nearest test file
-3. Run `<cmd>` to verify
-```
-
----
-
-## `_lifecycle.md` template
-
-```markdown
-# Runtime Lifecycle
-
-## Entry points
-| Access | Path | What |
-|--------|------|------|
-
-## Core state machine
-```
-<StateA> → <StateB> → (<StateC>)* → <End>
-```
-| State | Trigger | → Next |
-
-## Error recovery
-| Failure | Detection | Recovery |
-|---------|-----------|----------|
-
-## Entity lifecycles
-
-## Background processes
-| Process | Rate | Context |
-|---------|------|---------|
-```
-
----
-
 ## `_symbols.md` template
 
 Lightweight symbol lookup. One-line entries per symbol in a markdown table. Grep-friendly, no JSON parsing needed:
@@ -321,16 +246,6 @@ Exclude `node_modules/`, `.git/`, `__pycache__/`, `.venv/`.
 
 ---
 
-## `_symbols.md` format
-
-See `_symbols.md` template above for the markdown table format. No JSON — uses markdown tables that are both human-readable and grep-friendly.
-
-Scanner (`generate-symbol-index.py`) maps source files to domains from the `features/` directory structure and writes symbols into a single `_symbols.md` table + updates each domain doc's inline "Key functions / components" table.
-
-Kinds per language: C/C++ (`class`, `struct`, `enum`, `enum-value`, `function`, `global`, `extern`, `macro`, `namespace`), TS/JS (`class`, `interface`, `type`, `enum`, `function`, `const`, `export`), Python (`class`, `function`), Go (`struct`, `interface`, `function`, `var`, `const`, `type`), Rust (`struct`, `enum`, `fn`, `trait`, `impl`, `const`, `static`, `macro`).
-
----
-
 ## README.md template
 
 ```markdown
@@ -342,21 +257,19 @@ AI-optimized codebase map.
 1. `_index.md` — quick reference + architecture (keep open)
 2. `_standards.md` § Rules — what never to do
 3. `_standards.md` § Practices — how to write new code
-4. `_lifecycle.md` — how it runs
-5. `_deps.md` — who depends on whom
-6. `_tests.md` — what's tested
-7. `features/<domain>.md` — module deep dive
+4. `_symbols.md` — every symbol with domain + file:line
+5. `features/<domain>.md` — module deep dive
 
 ## For agents
 
 ### Adding a feature
-_index → _standards (Rules + Practices) → domain doc (symbols + architecture) → _standards (Patterns) → _deps → _tests
+_index → _standards (Rules + Practices) → domain doc (symbols + architecture) → _standards (Patterns)
 
 ### Debugging
-_lifecycle → _symbols.md (find symbol's domain) → domain doc (edge cases) → _deps → _standards (Rules)
+_symbols.md (find symbol's domain) → domain doc (edge cases) → _standards (Rules)
 
 ### Refactoring
-_deps (high-risk & solitary) → _tests (gaps) → domain docs (target + consumers) → refresh symbols
+_symbols.md (all symbols in target domain) → domain doc (target + consumers) → refresh symbols
 
 ### Unfamiliar code
 _symbols.md (find symbol → domain) → _index (domain overview) → domain doc
@@ -371,7 +284,9 @@ rg '<domain>' docs/wiki/_symbols.md       # all symbols in a domain
 - `make wiki` — initialize
 - `refresh symbols` — regenerate _symbols.md + domain doc tables
 - `refresh standards` — propose updated _standards.md
-- `refresh lifecycle` — propose updated _lifecycle.md
+
+## Build integration
+Symbols regenerate automatically on every build. See SKILL.md § Build integration.
 
 ## Stale docs
 Read source. If doc is wrong, propose update. Don't silently ignore.

@@ -1,80 +1,145 @@
 ---
 name: maintain-wiki
-description: Create and maintain a codebase wiki at docs/wiki/ for AI navigation. Generates spatial map, dependency graph, coding standards, test inventory, state/lifecycle docs, and a machine-readable symbol index. Use when user says "make wiki", "refresh symbol-index", or when docs/wiki/ already exists and code changes have been made.
+description: Create and maintain a codebase wiki at docs/wiki/ for AI navigation. Generates spatial map, coding standards, domain docs, and a symbol index kept fresh by the build system. Use when user says "make wiki" or when docs/wiki/ already exists and code changes have been made.
 ---
 
 # Maintain Wiki
 
-Codebase wiki at `docs/wiki/`. AI-optimized: spatial map, dependency graph, coding standards, test inventory, state machines, symbol index.
+Codebase wiki at `docs/wiki/`. Four files: spatial map, coding standards, domain docs, and a symbol index auto-regenerated on every build.
 
 See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
 
 ## Quick start
 
 ```
-"make wiki"           → initialize docs/wiki/ (interactive: domains + standards + lifecycle)
-"refresh symbols"      → regenerate _symbols.md from source
-"refresh standards"    → re-scan, propose updated _standards.md
-"refresh lifecycle"    → re-scan, propose updated _lifecycle.md
+"make wiki"          → initialize docs/wiki/ (interactive: domains + standards)
+"refresh symbols"    → regenerate _symbols.md from source (also wired into build)
 ```
 
 ## File inventory
 
 | File | Kind | Updated by |
 |------|------|-----------|
-| `_index.md` | Quickref + architecture | `make wiki` (auto) |
-| `_deps.md` | Dependency map | `make wiki` (auto) |
-| `_standards.md` | Rules + practices + patterns | `make wiki` (interactive), `refresh standards` |
-| `_tests.md` | Test inventory | `make wiki` (auto) |
-| `_lifecycle.md` | State machines + errors | `make wiki` (interactive), `refresh lifecycle` |
-| `_symbols.md` | Symbol → domain lookup (lightweight) | `make wiki`, `refresh symbol-index` |
-| `features/*.md` | Domain docs (with symbol tables inline) | `make wiki` |
+| `_index.md` | Quickref + architecture map | `make wiki` (auto) |
+| `_standards.md` | Rules + practices + patterns | `make wiki` (interactive) |
+| `features/*.md` | Domain docs (with inline symbol tables) | `make wiki`, `refresh symbols` |
+| `_symbols.md` | Symbol → domain lookup table | `make wiki`, `refresh symbols`, build system |
 | `plans/` | Architecture proposals | manual |
 | `README.md` | Usage instructions | `make wiki` only |
 
-`_index.md` has a quick reference section at the top (build, flash, test commands, key files, domain one-liners), then full architecture below. One file to open, two purposes.
+`_index.md` — quickref block at top (build/test commands, key files, domain one-liners), then architecture topology + entry points + "change X → look at Y" table.
 
-`_standards.md` has three sections: `## Rules` (what you MUST not do — catastrophic failures), `## Practices` (how you SHOULD write new code — engineering standards), `## Patterns` (how code IS written — detected conventions). One file covers all coding guidance.
+`_standards.md` — three sections: `## Rules` (what you MUST not do — catastrophic), `## Practices` (how you SHOULD write new code), `## Patterns` (how code IS written — detected conventions).
+
+`features/<domain>.md` — per-domain doc with architecture, data flow, edge cases, and an inline symbol table.
+
+`_symbols.md` — flat grep-friendly table: `| Name | Kind | Domain | File:Line |`. Find any symbol instantly, see which domain it belongs to.
 
 ## Workflow: make wiki
 
-1. Detect tech stack (CMakeLists.txt, Cargo.toml, package.json, etc.).
-2. Read existing docs (README, CONTEXT, AGENTS.md) — link, don't duplicate.
+1. Detect tech stack from config files and build system (Makefile, CMakeLists.txt, Cargo.toml, package.json, etc.).
+2. Read existing docs (README, CONTEXT, AGENTS.md) — link from `_index.md`, don't duplicate content.
 3. **Domain detection**: scan imports + directory clusters → propose groupings (2–20 files per domain) → **ask user to approve**.
-4. **Standards detection**: detect rules (scan for BR_PANIC, assert, guards in existing docs), detect patterns (error handling, naming, module structure), load practices from stack defaults. Present all three as a single `_standards.md` proposal → **ask user to approve**.
-5. **Lifecycle detection**: scan entry points, state machines, error recovery → propose → **ask user to approve**.
-6. Ask scope (source files matching language, exclude tests/generated).
-7. Create `docs/wiki/`:
-   - `_index.md` — quickref block at top (build/flash/test commands, key files, domain one-liners, top symbols), then architecture topology + entry points + "change X → look at Y" table
-   - `_deps.md` — dependency graph + high-risk modules + per-module verify commands
-   - `_standards.md` — `## Rules` (DON'T) + `## Practices` (SHOULD) + `## Patterns` (TYPICALLY)
-   - `_tests.md` — per-domain run commands, coverage table, gaps
-   - `_lifecycle.md` — state machines + error recovery table
-   - `_symbols.md` — lightweight index: every symbol → domain + file:line (one-line entries, grep-friendly)
+4. **Standards detection**: detect rules (scan for assertions, panic macros, guard patterns, explicit rules in AGENTS.md/CONTEXT), detect patterns (error handling, naming, module structure conventions), load practices from stack defaults (see REFERENCE.md). Present all three as a single `_standards.md` proposal → **ask user to approve**.
+5. Ask scope (source files matching language, exclude tests/generated/build artifacts).
+6. Create `docs/wiki/`:
+   - `_index.md` — quickref + architecture topology + "change X → look at Y"
+   - `_standards.md` — `## Rules` + `## Practices` + `## Patterns`
+   - `_symbols.md` — every symbol mapped to domain + file:line
    - `README.md` — agent decision tree + human reading guide
-   - Domain docs (`features/*.md`) — one per domain, each with inline symbol table
-   - `plans/` directory — empty
+   - `features/*.md` — one per domain, each with architecture + inline symbol table
+   - `plans/` — empty directory
+7. **Wire symbols into the build system.** Detect the existing build system and add a `symbols` target. See § Build integration below.
 8. Add `## Codebase Wiki` section to AGENTS.md.
 
 ## Workflow: refresh symbols
 
-1. Scan source files in scope for classes, functions, enums, globals, externs, macros.
+1. Scan source files for classes, functions, enums, globals, macros, etc. (language-specific — see REFERENCE.md for per-language kinds).
 2. Map each symbol to its domain and file:line.
-3. Write `docs/wiki/_symbols.md` — one line per symbol: `| <name> | <kind> | <domain> | <file>:<line> |`
-4. Add or update the inline symbol table in each `features/<domain>.md` (the "Key functions / components" table).
+3. Write `docs/wiki/_symbols.md` — one line per symbol.
+4. Update the inline symbol table in each `features/<domain>.md` (the "Key functions / components" table).
 5. Report count.
 
-`_symbols.md` is a grep-friendly markdown table. Find any symbol: `rg 'BusHandle' docs/wiki/_symbols.md`. AI reads the domain column, then reads that domain doc for architecture and edge cases. No JSON parsing needed.
+## Build integration
+
+The `generate-symbol-index.py` script (bundled with this skill) auto-detects language from file extensions. Wire it into the build system so symbols stay fresh with zero effort.
+
+### Step 1: Detect language
+
+Scan the project for source file extensions to determine the language. The script supports:
+
+| Language | Extensions | `--lang` flag |
+|----------|-----------|---------------|
+| C / C++ | `.c`, `.cpp`, `.h`, `.hpp` | `cpp` (default) |
+| Python | `.py` | `py` |
+| Go | `.go` | `go` |
+| Rust | `.rs` | `rs` |
+| TypeScript / JS | `.ts`, `.tsx`, `.js`, `.jsx` | `ts` |
+
+If `--lang` is omitted, the script tries the file extension directly — works for most cases. Provide `--lang` when the extension is ambiguous.
+
+### Step 2: Add a `symbols` target to the build system
+
+Adapt to whatever build system the project uses:
+
+**Makefile:**
+```makefile
+symbols:
+	@python3 $(PROJECT_ROOT)/scripts/generate-symbol-index.py \
+		-o docs/wiki/_symbols.md \
+		--docs-dir docs/wiki \
+		src/**/*.$(EXT)
+
+build: symbols
+	# existing build chain — symbols regenerate before every build
+```
+
+**CMake (add to CMakeLists.txt):**
+```cmake
+add_custom_target(symbols
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/generate-symbol-index.py
+        -o ${CMAKE_SOURCE_DIR}/docs/wiki/_symbols.md
+        --docs-dir ${CMAKE_SOURCE_DIR}/docs/wiki
+        ${CMAKE_SOURCE_DIR}/src/**/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/**/*.h
+    COMMENT "Regenerating wiki symbol index"
+)
+add_dependencies(my_target symbols)  # wire into existing target
+```
+
+**Cargo (add to Cargo.toml):**
+```toml
+[package.metadata.scripts]
+symbols = "python3 scripts/generate-symbol-index.py -o docs/wiki/_symbols.md --docs-dir docs/wiki src/**/*.rs"
+```
+
+**npm / package.json:**
+```json
+"scripts": {
+  "symbols": "python3 scripts/generate-symbol-index.py -o docs/wiki/_symbols.md --docs-dir docs/wiki 'src/**/*.{ts,tsx}'",
+  "build": "npm run symbols && tsc"
+}
+```
+
+**No build system:** Create a minimal `Makefile` with just the `symbols` target. The user runs `make symbols` manually or wires it into their editor.
+
+### Step 3: Wire into existing build target
+
+Find the primary build target (e.g. `all`, `build`, `compile`) and add `symbols` as a dependency. Every `make` / `cargo build` / `npm run build` regenerates the index.
+
+### Step 4: Copy the script
+
+The `generate-symbol-index.py` script lives in this skill's directory. Copy it into the project (e.g. `scripts/generate-symbol-index.py`) so the build system can invoke it. The AI should copy it when running `make wiki`.
 
 ## Symbol lookup
 
 ```bash
 rg '<symbol>' docs/wiki/_symbols.md       # find domain + file:line
-rg 'communication' docs/wiki/_symbols.md  # all symbols in a domain
+rg '<domain>' docs/wiki/_symbols.md       # all symbols in a domain
 ```
 
-Domain docs also contain an inline symbol table (the "Key functions / components" section). When working in a domain, read the domain doc directly — it has symbols, architecture, data flow, and edge cases in one file.
+Domain docs also contain an inline symbol table (the "Key functions / components" section). When working in a domain, read the domain doc directly — symbols, architecture, data flow, and edge cases in one file.
 
 ## Proactive suggestion
 
-After code changes, run `refresh symbols`. Check if `_standards.md`, `_lifecycle.md`, `_deps.md`, or domain docs need updating. Flag stale docs — don't silently ignore.
+After making code changes, if `docs/wiki/` exists: "Run `make symbols` to refresh the wiki symbol index, or rebuild to auto-refresh."
