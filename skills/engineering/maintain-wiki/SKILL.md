@@ -1,38 +1,39 @@
 ---
 name: maintain-wiki
-description: Create and maintain a codebase wiki at docs/wiki/ keyed to git blob hashes so docs stay current. Generates spatial map, dependency map, code archeology (patterns), test inventory, and state/lifecycle docs. Use when user says "make wiki", "update wiki", "wiki status", or when docs/wiki/ already exists and code changes have been made.
+description: Create and maintain a codebase wiki at docs/wiki/ for AI navigation. Generates spatial map, dependency graph, code patterns, test inventory, state/lifecycle docs, and a machine-readable symbol index. Use when user says "make wiki", "refresh symbol-index", or when docs/wiki/ already exists and code changes have been made.
 ---
 
 # Maintain Wiki
 
-Manages a hash-keyed codebase wiki at `docs/wiki/` that stays in sync with source via git blob hashes. Beyond domain docs, it generates AI-optimized meta files: spatial map, dependency graph, code patterns, test inventory, and state/lifecycle map.
+Manages a codebase wiki at `docs/wiki/` for AI navigation. Generates AI-optimized meta files: spatial map, dependency graph, code patterns, test inventory, state/lifecycle map, and a machine-readable **symbol index** that agents can use to jump directly to definitions.
 
-See [REFERENCE.md](REFERENCE.md) for manifests, templates, and detection heuristics.
+See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
 
 ## Quick start
 
 ```
-"make wiki"   → initialize docs/wiki/ (interactive: domains + patterns + lifecycle)
-"update wiki" → diff hashes, surgically update domain docs, refresh _tests.md + _deps.md
-"wiki status" → read-only report of staleness
+"make wiki"          → initialize docs/wiki/ (interactive: domains + patterns + lifecycle)
+"refresh symbol-index" → re-scan source, regenerate symbol-index.json
+"refresh patterns"   → re-scan codebase, propose updated _patterns.md
+"refresh lifecycle"  → re-scan state machines, propose updated _lifecycle.md
 ```
 
 ## File inventory
 
-| File | Kind | Updated by | Hash-tracked |
-|------|------|-----------|-------------|
-| `_index.md` | Spatial map | `make wiki`, `update wiki` | Yes (manifest) |
-| `_deps.md` | Dependency map | `make wiki`, `update wiki` | Auto (import scan) |
-| `_patterns.md` | Code archeology | `make wiki` (interactive) | No (editorial) |
-| `_tests.md` | Test inventory | `make wiki`, `update wiki` | Auto (file scan) |
-| `_lifecycle.md` | State machine | `make wiki` (interactive) | No (editorial) |
-| `_hashes.json` | Manifest | All workflows | N/A (source of truth) |
-| `features/*.md` | Domain docs | `update wiki` | Yes (per-file) |
-| `README.md` | Wiki instructions | `make wiki` only | No |
+| File | Kind | Updated by |
+|------|------|-----------|
+| `_index.md` | Spatial map | `make wiki` (auto) |
+| `_deps.md` | Dependency map | `make wiki` (auto) |
+| `_patterns.md` | Code archeology | `make wiki` (interactive), `refresh patterns` |
+| `_tests.md` | Test inventory | `make wiki` (auto) |
+| `_lifecycle.md` | State machine | `make wiki` (interactive), `refresh lifecycle` |
+| `symbol-index.json` | Machine-readable symbol map | `make wiki`, `refresh symbol-index` |
+| `features/*.md` | Domain docs | `make wiki` |
+| `README.md` | Wiki instructions | `make wiki` only |
 
 ## Workflow: make wiki
 
-1. Detect tech stack from config files (`package.json`, `Cargo.toml`, etc.).
+1. Detect tech stack from config files (`CMakeLists.txt`, `Cargo.toml`, `package.json`, etc.).
 2. Read existing docs (README, CONTEXT, ARCHITECTURE, AGENTS.md) — link from wiki, don't duplicate.
 3. **Domain detection**: scan imports + directory clusters → propose groupings → **ask user to approve**. Rule: 2–20 files per domain.
 4. **Pattern detection**: scan source for error handling, async flow, module structure, state management, naming conventions. Read AGENTS.md for stated conventions. Propose 5–10 patterns → **ask user to approve**.
@@ -40,47 +41,52 @@ See [REFERENCE.md](REFERENCE.md) for manifests, templates, and detection heurist
 6. Ask scope (default: source files matching language, excluding tests/generated code).
 7. Create `docs/wiki/`:
    - `_index.md` — entry points, ASCII topology, "change X → look at Y" table, domain TOC
-   - `_hashes.json` — file→domain→hash manifest
    - `_deps.md` — dependency graph from import analysis
    - `_patterns.md` — how code is written here (stack-specific templates in REFERENCE.md)
    - `_tests.md` — test file→domain mapping, test commands, coverage gaps
    - `_lifecycle.md` — runtime state machine (stack-specific templates in REFERENCE.md)
+   - `symbol-index.json` — machine-readable map of all symbols → file:line
    - `README.md` — instructions for humans and agents
-   - Create domain docs (`features/*.md`) for each approved domain now — one doc per domain covering its files, purpose, and key exports
-8. Add the ## Codebase Wiki section to AGENTS.md.
+   - Domain docs (`features/*.md`) — one per domain covering files, purpose, key exports
+8. Add the `## Codebase Wiki` section to AGENTS.md.
 
-## Workflow: update wiki
+## Workflow: refresh symbol-index
 
-1. Diff git blob hashes against `_hashes.json` → categorize: stale, undocumented, orphaned, new.
-2. **Present summary to user** before modifying anything.
-3. For each stale domain: `git diff HEAD~1..HEAD -- <files>`, read existing doc, surgically rewrite only affected sections.
-4. Create domain docs for undocumented files (after user assigns them to a domain).
-5. Regenerate `_index.md` from manifest + source scan.
-6. Regenerate `_deps.md` from import analysis.
-7. Regenerate `_tests.md` from file scan.
-8. Update all changed hashes in `_hashes.json`.
-9. Run `wiki status` to confirm zero staleness.
-10. **If `_patterns.md` or `_lifecycle.md` may be stale** (new files, refactored structure), suggest refreshing them. Never auto-update these — they're editorial.
+1. Scan every source file in scope for classes, functions, methods, enums, global variables, `extern` declarations, and macros.
+2. Map each symbol to its file path and line number.
+3. Write `docs/wiki/symbol-index.json` as a JSON array of `{name, kind, file, line, ...}` objects.
+4. Report count of indexed symbols.
 
-## Workflow: wiki status
+## Workflow: refresh patterns
 
-Read-only hash diff. Print report:
+Re-scan the codebase and propose an updated `_patterns.md`. Same heuristic as `make wiki` step 4 — detect error handling, async flow, naming conventions, etc. Present proposed changes for user approval. Never auto-write.
 
-```
-Wiki status:
-  Stale:           3 docs (features/task-system, ...)
-  Undocumented:    2 files (src/lib/newFeature.ts, ...)
-  Orphaned:        1 file
-  Up to date:      47 files
-```
+## Workflow: refresh lifecycle
+
+Re-scan the codebase and propose an updated `_lifecycle.md`. Same heuristic as `make wiki` step 5 — detect entry points, state machines, subscriptions. Present proposed changes for user approval. Never auto-write.
 
 ## Proactive suggestion
 
-After making code changes, if `docs/wiki/_hashes.json` exists, silently check for staleness. If anything is stale/undocumented: "5 wiki docs may be stale after these changes. Run `update wiki` to refresh them?"
+After making code changes, suggest: "The wiki docs may need updating after these changes. Run `refresh symbol-index` to keep the symbol index current, and check relevant domain docs for staleness."
 
-## Updating editorial meta files
+## Symbol index format
 
+```json
+{
+  "generated": "2026-05-21",
+  "language": "cpp",
+  "count": 142,
+  "symbols": [
+    { "name": "BoardType", "kind": "enum", "file": "appSrc/include/ConfigTypes.h", "line": 10 },
+    { "name": "LIDAR_NODE", "kind": "enum-value", "file": "appSrc/include/ConfigTypes.h", "line": 11 },
+    { "name": "BusHandle", "kind": "class", "file": "appSrc/communication/BusHandle.h", "line": 27 },
+    { "name": "processState", "kind": "method", "file": "appSrc/communication/BusHandle.cpp", "line": 150, "class": "BusHandle" },
+    { "name": "board_state", "kind": "global", "file": "appSrc/system/Sys.h", "line": 25, "type": "BoardState" },
+    { "name": "smfLidarScanHandler", "kind": "function", "file": "appSrc/core/Smf.cpp", "line": 532 },
+    { "name": "MAX_BODY_LENGTH", "kind": "macro", "file": "appSrc/config/Global.h", "line": 23 },
+    { "name": "cmfSendPacket", "kind": "function", "file": "appSrc/system/CommandFunctions.cpp", "line": 33 },
+  ]
+}
 ```
-"refresh patterns"    → re-scan codebase, propose updated _patterns.md
-"refresh lifecycle"   → re-scan state machines, propose updated _lifecycle.md
-```
+
+An agent can use this to instantly find where any symbol is defined, declared, or used — no grepping needed.
