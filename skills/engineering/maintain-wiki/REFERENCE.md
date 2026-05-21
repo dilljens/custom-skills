@@ -7,7 +7,7 @@ Two sections: quick reference at top, full architecture below.
 ```markdown
 # <Project Name> — Architecture Overview
 
-**Build**: `<cmd>`  **Flash**: `<cmd>`  **Test**: `<cmd>` (<N> tests)
+**Build**: `<cmd>`  **Test**: `<cmd>` (<N> tests)
 
 ## Quick reference
 
@@ -22,10 +22,6 @@ Two sections: quick reference at top, full architecture below.
 |--------|-----|
 | <Domain> | `<cmd> <filter>` |
 
-### Top symbols
-| Symbol | Kind | File |
-|--------|------|------|
-
 ### Domain one-liners
 | Domain | Doc |
 |--------|-----|
@@ -37,7 +33,6 @@ Two sections: quick reference at top, full architecture below.
 | Know what NOT to do | `_standards.md` § Rules |
 | Know how to write new code | `_standards.md` § Practices |
 | Match existing conventions | `_standards.md` § Patterns |
-| Find a definition | `_symbols.md` or `rg '<name>'` |
 | Understand a module | `features/<domain>.md` |
 
 ## Entry points
@@ -62,7 +57,7 @@ Two sections: quick reference at top, full architecture below.
 - [README.md](../../README.md) — project overview, setup
 ```
 
-Quick reference generated from: build scripts, test runner, symbol index (top 10 overarching symbols), domain descriptions.
+Quick reference generated from: build scripts, test runner, domain descriptions.
 
 ---
 
@@ -150,30 +145,6 @@ Also scan AGENTS.md, CONTEXT.md, README for explicit rules.
 
 ---
 
-## `_symbols.md` template
-
-Lightweight symbol lookup. One-line entries per symbol in a markdown table. Grep-friendly, no JSON parsing needed:
-
-```markdown
-# Symbol Index
-
-<N> symbols across <M> domains.
-
-| Name | Kind | Domain | File:Line |
-|------|------|--------|-----------|
-| `<class>` | class | <domain> | `<path>:<line>` |
-| `<function>` | function | <domain> | `<path>:<line>` |
-| `<global>` | global | <domain> | `<path>:<line>` |
-```
-
-Usage:
-```bash
-rg 'BusHandle' docs/wiki/_symbols.md        # find any symbol
-rg 'communication' docs/wiki/_symbols.md    # all symbols in a domain
-```
-
----
-
 ## Module doc template
 
 ```markdown
@@ -192,8 +163,6 @@ ASCII flow diagram.
 |------|------|-----------|---------|
 | `<fn>()` | function | `<file>:<line>` | <1 line> |
 | `<class>` | class | `<file>:<line>` | <1 line> |
-
-Populated from source scan during `refresh symbols`. Each domain doc has an inline symbol table — AI reads the domain doc and gets symbols, architecture, data flow, and edge cases in one file.
 
 ## Data flow
 Numbered steps.
@@ -218,7 +187,7 @@ Numbered steps.
 | Python API | Endpoints |
 | Go | Commands/Handlers |
 | Rust | Types/Traits |
-| C/C++ embedded | Globals, State Machines, Macros, PIO Programs, Protocol, Pin Map |
+| C/C++ embedded | Globals, Macros, PIO Programs, Protocol, Pin Map |
 
 ---
 
@@ -259,36 +228,25 @@ AI-optimized codebase map.
 1. `_index.md` — quick reference + architecture (keep open)
 2. `_standards.md` § Rules — what never to do
 3. `_standards.md` § Practices — how to write new code
-4. `_symbols.md` — every symbol with domain + file:line
-5. `features/<domain>.md` — module deep dive
+4. `features/<domain>.md` — module deep dive
 
 ## For agents
 
 ### Adding a feature
-_index → _standards (Rules + Practices) → domain doc (symbols + architecture) → _standards (Patterns)
+_index → _standards (Rules + Practices) → domain doc → _standards (Patterns)
 
 ### Debugging
-_symbols.md (find symbol's domain) → domain doc (edge cases) → _standards (Rules)
+_index → domain doc (edge cases) → _standards (Rules)
 
 ### Refactoring
-_symbols.md (all symbols in target domain) → domain doc (target + consumers) → refresh symbols
+domain docs (target + consumers) → _index (topology)
 
 ### Unfamiliar code
-_symbols.md (find symbol → domain) → _index (domain overview) → domain doc
-
-### Finding symbols
-```bash
-rg '<symbol>' docs/wiki/_symbols.md       # all match locations
-rg '<domain>' docs/wiki/_symbols.md       # all symbols in a domain
-```
+_index (domain overview) → domain doc
 
 ## Commands
 - `make wiki` — initialize
-- `refresh symbols` — regenerate _symbols.md + domain doc tables
 - `refresh standards` — propose updated _standards.md
-
-## Build integration
-Symbols regenerate automatically on every build. See SKILL.md § Build integration.
 
 ## Stale docs
 Read source. If doc is wrong, propose update. Don't silently ignore.
@@ -305,8 +263,6 @@ Read source. If doc is wrong, propose update. Don't silently ignore.
 
 **Existing docs/**: Detected, linked from `_index.md`, excluded from wiki scope.
 
-**File moved/deleted**: `refresh symbols` reflects current state.
-
-**Large refactor**: Re-run `make wiki` if domain structure changed, `refresh symbols` if only definitions changed.
+**Large refactor**: Re-run `make wiki` if domain structure changed.
 
 **Monorepo**: Detect workspace configs. Each member gets `docs/wiki/<member>/`.
