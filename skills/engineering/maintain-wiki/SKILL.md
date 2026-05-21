@@ -12,21 +12,24 @@ See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
 ## Quick start
 
 ```
-"make wiki"          → initialize docs/wiki/ (interactive: domains + patterns + lifecycle)
+"make wiki"          → initialize docs/wiki/ (interactive: domains + rules + patterns + lifecycle)
 "refresh symbol-index" → re-scan source, regenerate symbol-index.json
 "refresh patterns"   → re-scan codebase, propose updated _patterns.md
 "refresh lifecycle"  → re-scan state machines, propose updated _lifecycle.md
+"refresh rules"      → re-scan for coding commandments, propose updated _rules.md
 ```
 
 ## File inventory
 
 | File | Kind | Updated by |
 |------|------|-----------|
+| `_quickref.md` | One-page cheat sheet | `make wiki` (auto) |
 | `_index.md` | Spatial map | `make wiki` (auto) |
 | `_deps.md` | Dependency map | `make wiki` (auto) |
+| `_rules.md` | Coding commandments | `make wiki` (interactive) |
 | `_patterns.md` | Code archeology | `make wiki` (interactive), `refresh patterns` |
-| `_tests.md` | Test inventory | `make wiki` (auto) |
-| `_lifecycle.md` | State machine | `make wiki` (interactive), `refresh lifecycle` |
+| `_tests.md` | Test inventory + per-domain run commands | `make wiki` (auto) |
+| `_lifecycle.md` | State machines + error recovery | `make wiki` (interactive), `refresh lifecycle` |
 | `symbol-index.json` | Machine-readable symbol map | `make wiki`, `refresh symbol-index` |
 | `features/*.md` | Domain docs | `make wiki` |
 | `plans/` | Architecture proposals & migration plans | manual |
@@ -56,20 +59,23 @@ This is faster than grepping the entire source tree and returns precise file:lin
 1. Detect tech stack from config files (`CMakeLists.txt`, `Cargo.toml`, `package.json`, etc.).
 2. Read existing docs (README, CONTEXT, ARCHITECTURE, AGENTS.md) — link from wiki, don't duplicate.
 3. **Domain detection**: scan imports + directory clusters → propose groupings → **ask user to approve**. Rule: 2–20 files per domain.
-4. **Pattern detection**: scan source for error handling, async flow, module structure, state management, naming conventions. Read AGENTS.md for stated conventions. Propose 5–10 patterns → **ask user to approve**.
-5. **Lifecycle detection**: scan entry points, state enums/transitions, middleware chains, realtime subscriptions. Propose a state flow diagram → **ask user to approve**.
-6. Ask scope (default: source files matching language, excluding tests/generated code).
-7. Create `docs/wiki/`:
+4. **Rules detection**: scan AGENTS.md and existing docs for explicit "don't do X" statements. Scan source for patterns that would be catastrophic if broken (duplicate error handlers, missing guards, hard-coded timeouts). Propose 5–10 coding commandments → **ask user to approve**.
+5. **Pattern detection**: scan source for error handling, async flow, module structure, state management, naming conventions. Read AGENTS.md for stated conventions. Propose 5–10 patterns → **ask user to approve**.
+6. **Lifecycle detection**: scan entry points, state enums/transitions, error recovery paths, middleware chains. Propose state flow + error recovery diagrams → **ask user to approve**.
+7. Ask scope (default: source files matching language, excluding tests/generated code).
+8. Create `docs/wiki/`:
+   - `_quickref.md` — single page with build, flash, test commands; top 15 most-defined symbols; one-sentence domain descriptions
    - `_index.md` — entry points, ASCII topology, "change X → look at Y" table, domain TOC
-   - `_deps.md` — dependency graph from import analysis
+   - `_deps.md` — dependency graph from import analysis, per-module verify commands
+   - `_rules.md` — coding commandments: what you must NEVER do
    - `_patterns.md` — how code is written here (stack-specific templates in REFERENCE.md)
-   - `_tests.md` — test file→domain mapping, test commands, coverage gaps
-   - `_lifecycle.md` — runtime state machine (stack-specific templates in REFERENCE.md)
+   - `_tests.md` — test file→domain mapping, exact run commands per domain, coverage gaps
+   - `_lifecycle.md` — runtime state machine diagrams + error recovery paths
    - `symbol-index.json` — machine-readable map of all symbols → file:line
    - `README.md` — instructions for humans and agents
-   - Domain docs (`features/*.md`) — one per domain covering files, purpose, key exports
+   - Domain docs (`features/*.md`) — one per domain covering files, purpose, key exports, invariants
    - `plans/` directory — empty, ready for architecture proposals
-8. Add the `## Codebase Wiki` section to AGENTS.md.
+9. Add the `## Codebase Wiki` section to AGENTS.md.
 
 ## Workflow: refresh symbol-index
 
@@ -84,7 +90,11 @@ Re-scan the codebase and propose an updated `_patterns.md`. Same heuristic as `m
 
 ## Workflow: refresh lifecycle
 
-Re-scan the codebase and propose an updated `_lifecycle.md`. Same heuristic as `make wiki` step 5 — detect entry points, state machines, subscriptions. Present proposed changes for user approval. Never auto-write.
+Re-scan the codebase and propose an updated `_lifecycle.md`. Same heuristic as `make wiki` step 6 — detect entry points, state machines, error recovery paths. Present proposed changes for user approval. Never auto-write.
+
+## Workflow: refresh rules
+
+Re-scan the codebase and AGENTS.md / README / CONTEXT for coding commandments. Propose additions or removals to `_rules.md`. Rules are high-importance: they prevent catastrophic bugs, not stylistic preferences. Present for user approval. Never auto-write.
 
 ## Proactive suggestion
 
