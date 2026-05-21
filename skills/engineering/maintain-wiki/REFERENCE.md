@@ -37,6 +37,18 @@ Numbered step-by-step: what triggers this module, what it does, what it emits.
 |------------|-----|
 | `lib/supabase.ts` | Realtime task updates |
 | `lib/stations.ts` | Station lookup by QR |
+
+## Consumed by
+| Consumer module | How it uses this |
+|----------------|------------------|
+| `ui/task-list.tsx` | Renders task state via `useTasks()` |
+| `features/sabotage.ts` | Sabotage blocks task completion |
+
+## Related domains
+| Domain | Doc | Relationship |
+|--------|-----|-------------|
+| Meetings | `features/meetings.md` | Tasks trigger meeting eligibility checks |
+| Sabotage | `features/sabotage.md` | Sabotage interferes with task completion |
 ```
 
 ### Tech stack adaptations
@@ -52,6 +64,8 @@ Numbered step-by-step: what triggers this module, what it does, what it emits.
 | C/C++ embedded | **State Machines** | SMF states and transitions |
 | C/C++ embedded | **Macros** | Important `#define` constants |
 | C/C++ embedded | **PIO Programs** | PIO assembler programs and their pins |
+| C/C++ embedded | **Protocol** | Custom wire protocol format, byte layout, command table, CRC scheme |
+| Embedded (any) | **Pin Map** | Key GPIO pin assignments (link to PIN_ALLOCATION.md if exists) |
 
 Detect the stack from config files and auto-add the right sections. The base sections (What it does, Architecture, Data flow, Edge cases, Dependencies) always apply.
 
@@ -67,6 +81,18 @@ Spatial map for AI orientation:
 **Stack**: <language, framework, board>
 **Build**: <build command>
 **Test**: <test command, count>
+**Flash/Deploy**: <flash/deploy command>
+
+## Reading guide
+| I want to... | Read |
+|-------------|------|
+| Understand what this project does | This page, the entry point registry below |
+| Know how code is written here | `_patterns.md` |
+| Know how the system runs | `_lifecycle.md` |
+| Know who uses what | `_deps.md` |
+| Find a definition fast | Search `symbol-index.json` |
+| Know what's tested | `_tests.md` |
+| Explore a module in depth | `features/<domain>.md` |
 
 ## Entry point registry
 | Trigger | File | Description |
@@ -334,19 +360,53 @@ This wiki provides an AI-optimised map of the codebase: architecture, patterns, 
 
 ## For humans
 
-1. Start at `_index.md` — it covers the full architecture in 5-10 minutes.
-2. Drill into domain docs under `features/`.
-3. Each doc is 1-3 pages of prose + tables.
+1. `_index.md` — full architecture overview in 5-10 minutes
+2. `_patterns.md` — how code is written here (conventions)
+3. `_lifecycle.md` — how code runs here (state machines)
+4. `_deps.md` — who depends on whom
+5. `_tests.md` — what's tested, what's not
+6. `features/<domain>.md` — deep dive into any module
 
-## For AI agents
+## For AI agents — decision tree
 
-1. Before reading unfamiliar source: check `_index.md` to find the right domain, then read the domain doc.
-2. `symbol-index.json` is a machine-readable map of every symbol → file:line. Search it directly to find definitions without grepping.
-3. `_patterns.md` tells you how to write code here. Read it before adding anything new.
-4. `_lifecycle.md` tells you how things run. Read it before debugging state.
-5. `_tests.md` tells you what's tested and where gaps are. Check before refactoring.
-6. `_deps.md` tells you blast radius. Check before changing a module used by others.
-7. If a domain doc feels stale after reading source, mention it — refresh by re-reading the source and proposing an update.
+**Before making ANY change**, follow this protocol:
+
+### I need to add a feature or modify behavior
+1. Read `_index.md` → find the domain(s) involved
+2. Read the relevant `features/<domain>.md` (architecture, key functions, edge cases)
+3. Search `symbol-index.json` for the symbols you need (find exact file:line)
+4. Read `_patterns.md` — match existing conventions for error handling, naming, module structure
+5. Check `_deps.md` — identify the blast radius of your change
+
+### I need to debug a problem
+1. Read `_lifecycle.md` → find the state machine or lifecycle path
+2. Search `symbol-index.json` for the symbols involved in the failing path
+3. Read the relevant domain docs for edge cases
+4. Check `_deps.md` — the bug might be in a dependency
+
+### I need to refactor or restructure
+1. Read `_deps.md` — identify high-risk modules (depended on by 3+ others)
+2. Read `_tests.md` — identify untested domains (refactoring without tests is dangerous)
+3. Read domain docs for the target module AND its consumers
+4. After refactoring, run `refresh symbol-index` to update
+
+### I'm reading unfamiliar code
+1. Search `symbol-index.json` for the file name → see all symbols defined there
+2. Check `_index.md` → which domain owns this file?
+3. Read the domain doc → what does this module do?
+
+### Using the symbol index
+```bash
+# Find a specific symbol
+rg '"BusHandle"' docs/wiki/symbol-index.json -A 2
+
+# All symbols in a file  
+rg '"appSrc/communication/BusHandle"' docs/wiki/symbol-index.json -A 3
+
+# All functions in a domain
+rg '"features/communication"' -l docs/wiki/symbol-index.json && \
+  rg '"kind": "function"' docs/wiki/symbol-index.json -A 2 | rg 'BusHandle\|Bus\|Drv\|ib\|IBus'
+```
 
 ## Commands
 
@@ -354,6 +414,12 @@ This wiki provides an AI-optimised map of the codebase: architecture, patterns, 
 - `refresh symbol-index` — re-scan source, update symbol-index.json
 - `refresh patterns` — re-scan and update _patterns.md
 - `refresh lifecycle` — re-scan and update _lifecycle.md
+
+## If a domain doc seems stale
+Read the source files listed in the doc's "Source" header. If the doc is wrong, propose an update with the corrected sections. Don't silently ignore a stale doc — flag it to the user.
+
+## Plans directory
+`docs/wiki/plans/` holds architecture proposals and migration plans (e.g. FreeRTOS migration, OTA updates). Each plan is a standalone markdown file indexed by `plans/README.md`. Plans are written once, referenced forever — they justify *decisions*, unlike the living domain docs which describe *facts*.
 ```
 
 ---

@@ -29,7 +29,27 @@ See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
 | `_lifecycle.md` | State machine | `make wiki` (interactive), `refresh lifecycle` |
 | `symbol-index.json` | Machine-readable symbol map | `make wiki`, `refresh symbol-index` |
 | `features/*.md` | Domain docs | `make wiki` |
+| `plans/` | Architecture proposals & migration plans | manual |
 | `README.md` | Wiki instructions | `make wiki` only |
+
+The `plans/` directory is optional — created when users generate architecture proposals or migration plans. Plans are long-form docs that justify decisions, not living documentation. Each plan gets its own markdown file with a `README.md` index.
+
+## How to use the symbol index
+
+When looking up a symbol, search `docs/wiki/symbol-index.json` with a simple filter:
+
+```
+# Find all symbols matching "processState"
+rg '"processState"' docs/wiki/symbol-index.json -A 3
+
+# Find all BusHandle methods
+rg '"name": ".*BusHandle.*"' docs/wiki/symbol-index.json
+
+# Find all globals defined in Sys.h
+rg '"file": "appSrc/system/Sys.h"' docs/wiki/symbol-index.json
+```
+
+This is faster than grepping the entire source tree and returns precise file:line locations. Use it before reading any file you're unfamiliar with — it tells you exactly where to look.
 
 ## Workflow: make wiki
 
@@ -48,6 +68,7 @@ See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
    - `symbol-index.json` — machine-readable map of all symbols → file:line
    - `README.md` — instructions for humans and agents
    - Domain docs (`features/*.md`) — one per domain covering files, purpose, key exports
+   - `plans/` directory — empty, ready for architecture proposals
 8. Add the `## Codebase Wiki` section to AGENTS.md.
 
 ## Workflow: refresh symbol-index
@@ -67,7 +88,14 @@ Re-scan the codebase and propose an updated `_lifecycle.md`. Same heuristic as `
 
 ## Proactive suggestion
 
-After making code changes, suggest: "The wiki docs may need updating after these changes. Run `refresh symbol-index` to keep the symbol index current, and check relevant domain docs for staleness."
+After making code changes, run `refresh symbol-index` to keep the index current. Then check:
+
+1. Did you add/remove any public API? → the relevant domain doc may need updating
+2. Did you change any state machine or lifecycle path? → `_lifecycle.md` may need updating
+3. Did you introduce a new pattern or convention? → `_patterns.md` may need updating
+4. Did you add/remove dependencies? → `_deps.md` and domain doc "Dependencies" sections need updating
+
+If a domain doc is clearly stale after your changes, propose an update to the user. Never silently let stale docs accumulate.
 
 ## Symbol index format
 
