@@ -13,7 +13,7 @@ See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
 
 ```
 "make wiki"           → initialize docs/wiki/ (interactive: domains + standards + lifecycle)
-"refresh symbol-index" → regenerate symbol-index.json from source
+"refresh symbols"      → regenerate _symbols.md from source
 "refresh standards"    → re-scan, propose updated _standards.md
 "refresh lifecycle"    → re-scan, propose updated _lifecycle.md
 ```
@@ -27,8 +27,8 @@ See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
 | `_standards.md` | Rules + practices + patterns | `make wiki` (interactive), `refresh standards` |
 | `_tests.md` | Test inventory | `make wiki` (auto) |
 | `_lifecycle.md` | State machines + errors | `make wiki` (interactive), `refresh lifecycle` |
-| `symbol-index.json` | Symbol → file:line map | `make wiki`, `refresh symbol-index` |
-| `features/*.md` | Domain docs | `make wiki` |
+| `_symbols.md` | Symbol → domain lookup (lightweight) | `make wiki`, `refresh symbol-index` |
+| `features/*.md` | Domain docs (with symbol tables inline) | `make wiki` |
 | `plans/` | Architecture proposals | manual |
 | `README.md` | Usage instructions | `make wiki` only |
 
@@ -50,36 +50,31 @@ See [REFERENCE.md](REFERENCE.md) for templates and detection heuristics.
    - `_standards.md` — `## Rules` (DON'T) + `## Practices` (SHOULD) + `## Patterns` (TYPICALLY)
    - `_tests.md` — per-domain run commands, coverage table, gaps
    - `_lifecycle.md` — state machines + error recovery table
-   - `symbol-index.json` — every symbol → file:line
+   - `_symbols.md` — lightweight index: every symbol → domain + file:line (one-line entries, grep-friendly)
    - `README.md` — agent decision tree + human reading guide
-   - Domain docs (`features/*.md`) — one per domain
+   - Domain docs (`features/*.md`) — one per domain, each with inline symbol table
    - `plans/` directory — empty
 8. Add `## Codebase Wiki` section to AGENTS.md.
 
-## Workflow: refresh symbol-index
+## Workflow: refresh symbols
 
 1. Scan source files in scope for classes, functions, enums, globals, externs, macros.
-2. Write `docs/wiki/symbol-index.json`.
-3. Report symbol count.
+2. Map each symbol to its domain and file:line.
+3. Write `docs/wiki/_symbols.md` — one line per symbol: `| <name> | <kind> | <domain> | <file>:<line> |`
+4. Add or update the inline symbol table in each `features/<domain>.md` (the "Key functions / components" table).
+5. Report count.
 
-## Workflow: refresh standards
+`_symbols.md` is a grep-friendly markdown table. Find any symbol: `rg 'BusHandle' docs/wiki/_symbols.md`. AI reads the domain column, then reads that domain doc for architecture and edge cases. No JSON parsing needed.
 
-Re-scan codebase + AGENTS.md for new rules, patterns, or practice gaps. Propose updated `_standards.md`. User approves. Never auto-write.
-
-## Workflow: refresh lifecycle
-
-Re-scan for new state machines or error recovery paths. Propose updated `_lifecycle.md`. User approves. Never auto-write.
-
-## Symbol index usage
+## Symbol lookup
 
 ```bash
-rg '"<symbol>"' docs/wiki/symbol-index.json -A 3     # find symbol definition
-rg '"<file-path>"' docs/wiki/symbol-index.json -A 3  # all symbols in a file
-rg '"kind"' docs/wiki/symbol-index.json | sort | uniq -c  # kind breakdown
+rg '<symbol>' docs/wiki/_symbols.md       # find domain + file:line
+rg 'communication' docs/wiki/_symbols.md  # all symbols in a domain
 ```
 
-Faster than full-tree grep. Returns precise file:line.
+Domain docs also contain an inline symbol table (the "Key functions / components" section). When working in a domain, read the domain doc directly — it has symbols, architecture, data flow, and edge cases in one file.
 
 ## Proactive suggestion
 
-After code changes, run `refresh symbol-index`. Check if `_standards.md`, `_lifecycle.md`, `_deps.md`, or domain docs need updating. Flag stale docs — don't silently ignore.
+After code changes, run `refresh symbols`. Check if `_standards.md`, `_lifecycle.md`, `_deps.md`, or domain docs need updating. Flag stale docs — don't silently ignore.

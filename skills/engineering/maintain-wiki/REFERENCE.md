@@ -223,6 +223,30 @@ Also scan AGENTS.md, CONTEXT.md, README for explicit rules.
 
 ---
 
+## `_symbols.md` template
+
+Lightweight symbol lookup. One-line entries per symbol in a markdown table. Grep-friendly, no JSON parsing needed:
+
+```markdown
+# Symbol Index
+
+<N> symbols across <M> domains.
+
+| Name | Kind | Domain | File:Line |
+|------|------|--------|-----------|
+| `<class>` | class | <domain> | `<path>:<line>` |
+| `<function>` | function | <domain> | `<path>:<line>` |
+| `<global>` | global | <domain> | `<path>:<line>` |
+```
+
+Usage:
+```bash
+rg 'BusHandle' docs/wiki/_symbols.md        # find any symbol
+rg 'communication' docs/wiki/_symbols.md    # all symbols in a domain
+```
+
+---
+
 ## Module doc template
 
 ```markdown
@@ -237,8 +261,12 @@ Also scan AGENTS.md, CONTEXT.md, README for explicit rules.
 ASCII flow diagram.
 
 ## Key functions / components
-| Name | Location | Purpose |
-|------|----------|---------|
+| Name | Kind | File:Line | Purpose |
+|------|------|-----------|---------|
+| `<fn>()` | function | `<file>:<line>` | <1 line> |
+| `<class>` | class | `<file>:<line>` | <1 line> |
+
+Populated from source scan during `refresh symbols`. Each domain doc has an inline symbol table — AI reads the domain doc and gets symbols, architecture, data flow, and edge cases in one file.
 
 ## Data flow
 Numbered steps.
@@ -293,20 +321,11 @@ Exclude `node_modules/`, `.git/`, `__pycache__/`, `.venv/`.
 
 ---
 
-## Symbol index format
+## `_symbols.md` format
 
-```json
-{
-  "generated": "YYYY-MM-DD",
-  "language": "cpp",
-  "count": N,
-  "symbols": [
-    { "name": "<Name>", "kind": "class", "file": "<path>", "line": N },
-    { "name": "<Name>", "kind": "function", "file": "<path>", "line": N },
-    { "name": "<Name>", "kind": "macro", "file": "<path>", "line": N }
-  ]
-}
-```
+See `_symbols.md` template above for the markdown table format. No JSON — uses markdown tables that are both human-readable and grep-friendly.
+
+Scanner (`generate-symbol-index.py`) maps source files to domains from the `features/` directory structure and writes symbols into a single `_symbols.md` table + updates each domain doc's inline "Key functions / components" table.
 
 Kinds per language: C/C++ (`class`, `struct`, `enum`, `enum-value`, `function`, `global`, `extern`, `macro`, `namespace`), TS/JS (`class`, `interface`, `type`, `enum`, `function`, `const`, `export`), Python (`class`, `function`), Go (`struct`, `interface`, `function`, `var`, `const`, `type`), Rust (`struct`, `enum`, `fn`, `trait`, `impl`, `const`, `static`, `macro`).
 
@@ -331,26 +350,26 @@ AI-optimized codebase map.
 ## For agents
 
 ### Adding a feature
-_index → _standards (Rules + Practices) → domain doc → symbol-index → _standards (Patterns) → _deps → _tests
+_index → _standards (Rules + Practices) → domain doc (symbols + architecture) → _standards (Patterns) → _deps → _tests
 
 ### Debugging
-_lifecycle → symbol-index → domain doc (edge cases) → _deps → _standards (Rules)
+_lifecycle → _symbols.md (find symbol's domain) → domain doc (edge cases) → _deps → _standards (Rules)
 
 ### Refactoring
-_deps (high-risk & solitary) → _tests (gaps) → domain docs (target + consumers) → refresh symbol-index
+_deps (high-risk & solitary) → _tests (gaps) → domain docs (target + consumers) → refresh symbols
 
 ### Unfamiliar code
-symbol-index (file's symbols) → _index (which domain?) → domain doc
+_symbols.md (find symbol → domain) → _index (domain overview) → domain doc
 
 ### Finding symbols
 ```bash
-rg '"<name>"' docs/wiki/symbol-index.json -A 3     # definition
-rg '"<file>"' docs/wiki/symbol-index.json -A 3     # file contents
+rg '<symbol>' docs/wiki/_symbols.md       # all match locations
+rg '<domain>' docs/wiki/_symbols.md       # all symbols in a domain
 ```
 
 ## Commands
 - `make wiki` — initialize
-- `refresh symbol-index` — regenerate index
+- `refresh symbols` — regenerate _symbols.md + domain doc tables
 - `refresh standards` — propose updated _standards.md
 - `refresh lifecycle` — propose updated _lifecycle.md
 
@@ -369,8 +388,8 @@ Read source. If doc is wrong, propose update. Don't silently ignore.
 
 **Existing docs/**: Detected, linked from `_index.md`, excluded from wiki scope.
 
-**File moved/deleted**: `refresh symbol-index` reflects current state.
+**File moved/deleted**: `refresh symbols` reflects current state.
 
-**Large refactor**: Re-run `make wiki` if domain structure changed, `refresh symbol-index` if only definitions changed.
+**Large refactor**: Re-run `make wiki` if domain structure changed, `refresh symbols` if only definitions changed.
 
 **Monorepo**: Detect workspace configs. Each member gets `docs/wiki/<member>/`.

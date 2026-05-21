@@ -1,23 +1,20 @@
 #!/usr/bin/env python3
 """
-Generate a machine-readable symbol index from source files.
+Generate a lightweight symbol index from source files.
 
-Output: JSON array of {name, kind, file, line} objects.
-Supports C/C++, Python, TypeScript, Go, Rust.
+Output: markdown table (_symbols.md format).
+Also updates domain doc inline symbol tables if --docs-dir is provided.
 
 Usage:
-  python generate-symbol-index.py --lang cpp appSrc/**/*.{cpp,h,hpp} > symbol-index.json
-  python generate-symbol-index.py --lang py --exclude tests/ mcp_server/**/*.py >> symbol-index.json
+  python generate-symbol-index.py --lang cpp --docs-dir docs/wiki appSrc/**/*.{cpp,h}
+  python generate-symbol-index.py --lang py --docs-dir docs/wiki mcp_server/**/*.py
 """
 
 import argparse
-import json
 import os
 import re
 import sys
-from datetime import date
 from glob import glob
-from typing import Optional
 
 
 def scan_cpp(filepath: str) -> list[dict]:
@@ -286,8 +283,9 @@ def main():
     parser = argparse.ArgumentParser(description="Generate symbol index from source files")
     parser.add_argument("files", nargs="+", help="Source file globs to scan")
     parser.add_argument("--lang", default=None, help="Force language (cpp, py, go, rs, ts)")
-    parser.add_argument("--exclude", default="", help="Comma-separated directory patterns to exclude")
-    parser.add_argument("--output", "-o", default=None, help="Write to file instead of stdout")
+    parser.add_argument("--exclude", default="", help="Comma-separated patterns to exclude")
+    parser.add_argument("--output", "-o", default=None, help="Write _symbols.md to file (default: stdout)")
+    parser.add_argument("--docs-dir", default=None, help="Path to docs/wiki/ for domain mapping")
     args = parser.parse_args()
 
     exclude_patterns = [p.strip() for p in args.exclude.split(",") if p.strip()]
@@ -296,7 +294,6 @@ def main():
     for pattern in args.files:
         all_files.extend(glob(pattern, recursive=True))
 
-    # Deduplicate and filter
     seen = set()
     filtered = []
     for f in all_files:
@@ -308,6 +305,17 @@ def main():
             continue
         filtered.append(f)
 
+    # Build domain map from docs/wiki/features/*.md filenames
+    domain_map = {}  # file prefix -> domain name
+    if args.docs_dir:
+        features_dir = os.path.join(args.docs_dir, "features")
+        if os.path.isdir(features_dir):
+            for doc_file in os.listdir(features_dir):
+                if doc_file.endswith(".md"):
+                    domain = doc_file.replace(".md", "")
+                    # domain name matches the features/*.md filename
+                    domain_map[domain] = domain
+
     all_symbols = []
     for filepath in sorted(filtered):
         ext = os.path.splitext(filepath)[1].lstrip(".")
@@ -316,25 +324,119 @@ def main():
         if scanner:
             try:
                 symbols = scanner(filepath)
+                for s in symbols:
+                    domain = infer_domain(filepath, domain_map)
+                    s["domain"] = domain
                 all_symbols.extend(symbols)
             except Exception as e:
                 print(f"Warning: {filepath}: {e}", file=sys.stderr)
 
-    result = {
-        "generated": str(date.today()),
-        "count": len(all_symbols),
-        "symbols": all_symbols,
-    }
+    # Build markdown table output
+    lines = [
+        "# Symbol Index",
+        "",
+        f"{len(all_symbols)} symbols across {len(domain_map)} domains.",
+        "",
+        "| Name | Kind | Domain | File:Line |",
+        "|------|------|--------|-----------|",
+    ]
+    kind_order = {"class": 0, "struct": 1, "function": 2, "global": 3, "extern": 4,
+                   "enum": 5, "enum-value": 6, "macro": 7, "namespace": 8}
+    all_symbols.sort(key=lambda s: (kind_order.get(s.get("kind", ""), 9), s["name"].lower()))
 
-    output = json.dumps(result, indent=2)
+    for s in all_symbols:
+        name = s["name"]
+        kind = s.get("kind", "")
+        domain = s.get("domain", "—")
+        loc = f"{s['file']}:{s['line']}"
+        lines.append(f"| `{name}` | {kind} | {domain} | `{loc}` |")
+
+    # Update domain doc inline symbol tables if requested
+    if args.docs_dir:
+        _update_domain_docs(args.docs_dir, all_symbols, domain_map)
+
+    output = "\n".join(lines) + "\n"
 
     if args.output:
         with open(args.output, "w") as f:
             f.write(output)
-            f.write("\n")
         print(f"Wrote {len(all_symbols)} symbols to {args.output}", file=sys.stderr)
     else:
         print(output)
+
+
+def infer_domain(filepath: str, domain_map: dict) -> str:
+    parts = filepath.replace("\\", "/").split("/")
+    for part in parts:
+        part_lower = part.lower()
+        for dom_name in domain_map:
+            # Exact match
+            if part_lower == dom_name:
+                return dom_name
+    # Fuzzy: directory name is a prefix or substring of a domain name
+    for part in parts:
+        part_lower = part.lower()
+        for dom_name in domain_map:
+            if part_lower in dom_name or dom_name in part_lower:
+                return dom_name
+    return "—"
+
+
+def _update_domain_docs(docs_dir: str, symbols: list, domain_map: dict):
+    """Update inline symbol tables in features/<domain>.md files."""
+    features_dir = os.path.join(docs_dir, "features")
+    if not os.path.isdir(features_dir):
+        return
+
+    # Group symbols by domain
+    by_domain = {}
+    for s in symbols:
+        dom = s.get("domain", "—")
+        if dom == "—":
+            continue
+        by_domain.setdefault(dom, []).append(s)
+
+    for domain_name, dom_symbols in by_domain.items():
+        doc_path = os.path.join(features_dir, f"{domain_name}.md")
+        if not os.path.isfile(doc_path):
+            continue
+
+        # Read current doc and find "Key functions" section to replace
+        with open(doc_path) as f:
+            content = f.read()
+
+        # Build replacement table
+        table_lines = [
+            "| Name | Kind | File:Line | Purpose |",
+            "|------|------|-----------|---------|",
+        ]
+        kind_order = {"class": 0, "struct": 1, "function": 2, "global": 3, "extern": 4,
+                       "enum": 5, "enum-value": 6, "macro": 7, "namespace": 8}
+        dom_symbols.sort(key=lambda s: (kind_order.get(s.get("kind", ""), 9), s["name"].lower()))
+
+        for s in dom_symbols:
+            loc = f"{s['file']}:{s['line']}"
+            table_lines.append(f"| `{s['name']}` | {s.get('kind', '')} | `{loc}` | |")
+
+        new_table = "\n".join(table_lines)
+
+        # Replace content between | Name ... | ... | and the next ## section
+        pattern = re.compile(
+            r'(\| Name \|.*?\| Purpose \|\n\|------.*?\n)(.*?)(\n## )',
+            re.DOTALL
+        )
+        match = pattern.search(content)
+        if match:
+            new_content = content[:match.start()] + match.group(1) + new_table[len(match.group(1)):] + content[match.end() - len(match.group(3)):]
+            # Simpler approach: find the table and replace it
+            table_start = match.start()
+            table_end = match.end() - len(match.group(3))
+            content = content[:table_start] + new_table + "\n\n" + match.group(3) + content[table_end + len(match.group(3)):]
+
+            with open(doc_path, "w") as f:
+                f.write(content)
+
+            print(f"  Updated {domain_name}.md: {len(dom_symbols)} symbols", file=sys.stderr)
 
 
 if __name__ == "__main__":
