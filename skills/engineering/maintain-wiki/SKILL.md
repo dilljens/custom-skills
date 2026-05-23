@@ -1,6 +1,6 @@
 ---
 name: maintain-wiki
-description: Create and maintain a codebase wiki at docs/wiki/ for AI navigation. Generates spatial map, coding standards, and domain docs. Use when user says "make wiki", "refresh wiki", "update wiki", or when docs/wiki/ already exists and code changes have been made.
+description: Create and maintain a codebase wiki at docs/wiki/ for AI navigation. Generates spatial map, coding standards, and domain docs with inline symbol tables. Symbol index auto-regenerates on every build. Use when user says "make wiki".
 ---
 
 # Maintain Wiki
